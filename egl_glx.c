@@ -174,6 +174,19 @@ struct GLX_egl_config
 /* standard typecasts */
 _EGL_DRIVER_STANDARD_TYPECASTS(GLX_egl)
 
+static Bool create_context_error;
+
+static int
+create_context_error_handler(Display *dpy, XErrorEvent *error)
+{
+   char buf[128];
+   create_context_error = True;
+   XGetErrorText(dpy, error->error_code, buf, sizeof(buf));
+   _eglLog(_EGL_DEBUG, "X error %d for request (%d, %d): %s", error->error_code, error->request_code, error->minor_code, buf);
+   return 0;
+}
+
+
 static int
 GLX_egl_config_index(_EGLConfig *conf)
 {
@@ -690,6 +703,7 @@ GLX_eglCreateContext(_EGLDriver *drv, _EGLDisplay *disp, _EGLConfig *conf,
    struct GLX_egl_context *GLX_ctx = CALLOC_STRUCT(GLX_egl_context);
    struct GLX_egl_display *GLX_dpy = GLX_egl_display(disp);
    struct GLX_egl_context *GLX_ctx_shared = GLX_egl_context(share_list);
+   int (*old_handler)(Display *, XErrorEvent *);
 
    if (!GLX_ctx) {
       _eglError(EGL_BAD_ALLOC, "eglCreateContext");
@@ -710,11 +724,24 @@ GLX_eglCreateContext(_EGLDriver *drv, _EGLDisplay *disp, _EGLConfig *conf,
           None
       };
 
+      /* glXCreateContextAttribsARB can trigger BadMatch X error when called
+       * with unsupported version, set a temporary handler to avoid crash */
+      old_handler = XSetErrorHandler(create_context_error_handler);
+      create_context_error = False;
+
       GLX_ctx->context = GLX_drv->glXCreateContextAttribsARB(GLX_dpy->dpy,
             GLX_dpy->fbconfigs[GLX_egl_config_index(conf)],
             GLX_ctx_shared ? GLX_ctx_shared->context : NULL,
             GL_TRUE,
             context_attribs);
+
+      XSync(GLX_dpy->dpy, False);
+
+      /* restore error handler */
+      XSetErrorHandler(old_handler);
+
+      if (create_context_error)
+        GLX_ctx->context = 0;
    }
    else if (GLX_dpy->have_fbconfig) {
       GLX_ctx->context = GLX_drv->glXCreateNewContext(GLX_dpy->dpy,
