@@ -1164,7 +1164,7 @@ GLX_Load(_EGLDriver *drv)
    if (!GLX_drv->glXGetProcAddress)
       GLX_drv->glXGetProcAddress = dlsym(RTLD_DEFAULT, "glXGetProcAddressARB");
    if (!GLX_drv->glXGetProcAddress) {
-      handle = dlopen("libGL.so", RTLD_LAZY | RTLD_LOCAL);
+      handle = dlopen("libGL.so.1", RTLD_LAZY | RTLD_LOCAL);
       if (!handle)
          goto fail;
 
