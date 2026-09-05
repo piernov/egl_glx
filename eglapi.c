@@ -289,6 +289,31 @@ _eglUnlockDisplay(_EGLDisplay *dpy)
 }
 
 
+static EGLint *
+_eglConvertAttribsToInt(const EGLAttrib *attr_list)
+{
+   EGLint *int_attribs = NULL;
+
+   /* Convert attributes from EGLAttrib[] to EGLint[] */
+   if (attr_list) {
+      int i, size = 0;
+
+      while (attr_list[size] != EGL_NONE)
+         size += 2;
+
+      size += 1; /* add space for EGL_NONE */
+
+      int_attribs = calloc(size, sizeof(int_attribs[0]));
+      if (!int_attribs)
+         return NULL;
+
+      for (i = 0; i < size; i++)
+         int_attribs[i] = attr_list[i];
+   }
+   return int_attribs;
+}
+
+
 /**
  * This is typically the first EGL function that an application calls.
  * It associates a private _EGLDisplay object to the native display.
