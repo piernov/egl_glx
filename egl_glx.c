@@ -824,7 +824,7 @@ get_drawable_size(Display *dpy, Drawable d, unsigned *width, unsigned *height)
  */
 static _EGLSurface *
 GLX_eglCreateWindowSurface(_EGLDriver *drv, _EGLDisplay *disp,
-                           _EGLConfig *conf, EGLNativeWindowType window,
+                           _EGLConfig *conf, void *native_window,
                            const EGLint *attrib_list)
 {
    struct GLX_egl_driver *GLX_drv = GLX_egl_driver(drv);
@@ -844,7 +844,7 @@ GLX_eglCreateWindowSurface(_EGLDriver *drv, _EGLDisplay *disp,
       return NULL;
    }
 
-   GLX_surf->drawable = window;
+   GLX_surf->drawable = (uintptr_t) native_window;
 
    if (GLX_dpy->have_1_3 && !GLX_dpy->glx_window_quirk) {
       GLX_surf->glx_drawable = GLX_drv->glXCreateWindow(GLX_dpy->dpy,
@@ -863,7 +863,7 @@ GLX_eglCreateWindowSurface(_EGLDriver *drv, _EGLDisplay *disp,
    if (GLX_dpy->have_1_3 && !GLX_dpy->glx_window_quirk)
       GLX_surf->destroy = GLX_drv->glXDestroyWindow;
 
-   get_drawable_size(GLX_dpy->dpy, window, &width, &height);
+   get_drawable_size(GLX_dpy->dpy, GLX_surf->drawable, &width, &height);
    GLX_surf->Base.Width = width;
    GLX_surf->Base.Height = height;
 
@@ -872,7 +872,7 @@ GLX_eglCreateWindowSurface(_EGLDriver *drv, _EGLDisplay *disp,
 
 static _EGLSurface *
 GLX_eglCreatePixmapSurface(_EGLDriver *drv, _EGLDisplay *disp,
-                           _EGLConfig *conf, EGLNativePixmapType pixmap,
+                           _EGLConfig *conf, void *native_pixmap,
                            const EGLint *attrib_list)
 {
    struct GLX_egl_driver *GLX_drv = GLX_egl_driver(drv);
@@ -892,7 +892,7 @@ GLX_eglCreatePixmapSurface(_EGLDriver *drv, _EGLDisplay *disp,
       return NULL;
    }
 
-   GLX_surf->drawable = pixmap;
+   GLX_surf->drawable = (uintptr_t) native_pixmap;
 
    if (GLX_dpy->have_1_3) {
       GLX_surf->glx_drawable = GLX_drv->glXCreatePixmap(GLX_dpy->dpy,
@@ -924,7 +924,7 @@ GLX_eglCreatePixmapSurface(_EGLDriver *drv, _EGLDisplay *disp,
    GLX_surf->destroy = (GLX_dpy->have_1_3) ?
       GLX_drv->glXDestroyPixmap : GLX_drv->glXDestroyGLXPixmap;
 
-   get_drawable_size(GLX_dpy->dpy, pixmap, &width, &height);
+   get_drawable_size(GLX_dpy->dpy, GLX_surf->drawable, &width, &height);
    GLX_surf->Base.Width = width;
    GLX_surf->Base.Height = height;
 
