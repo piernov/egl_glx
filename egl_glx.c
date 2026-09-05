@@ -135,6 +135,8 @@ struct GLX_egl_display
    EGLBoolean have_fbconfig;
    EGLBoolean have_pbuffer;
    EGLBoolean have_create_context_attribs;
+   EGLBoolean have_create_context_es_profile;
+   EGLBoolean have_create_context_es2_profile;
 
    /* workaround quirks of different GLX implementations */
    EGLBoolean single_buffered_quirk;
@@ -257,6 +259,14 @@ convert_fbconfig(struct GLX_egl_driver *GLX_drv,
 
    GLX_conf->Base.RenderableType = EGL_OPENGL_BIT;
    GLX_conf->Base.Conformant = EGL_OPENGL_BIT;
+   if (GLX_dpy->have_create_context_es_profile) {
+      GLX_conf->Base.RenderableType |= EGL_OPENGL_ES_BIT;
+      GLX_conf->Base.Conformant |= EGL_OPENGL_ES_BIT;
+   }
+   if (GLX_dpy->have_create_context_es2_profile) {
+      GLX_conf->Base.RenderableType |= EGL_OPENGL_ES2_BIT;
+      GLX_conf->Base.Conformant |= EGL_OPENGL_ES2_BIT;
+   }
 
    for (i = 0; i < ARRAY_SIZE(fbconfig_attributes); i++) {
       EGLint egl_attr, egl_val;
@@ -396,6 +406,15 @@ convert_visual(struct GLX_egl_driver *GLX_drv,
 
    GLX_conf->Base.RenderableType = EGL_OPENGL_BIT;
    GLX_conf->Base.Conformant = EGL_OPENGL_BIT;
+   if (GLX_dpy->have_create_context_es_profile) {
+      GLX_conf->Base.RenderableType |= EGL_OPENGL_ES_BIT;
+      GLX_conf->Base.Conformant |= EGL_OPENGL_ES_BIT;
+   }
+   if (GLX_dpy->have_create_context_es2_profile) {
+      GLX_conf->Base.RenderableType |= EGL_OPENGL_ES2_BIT;
+      GLX_conf->Base.Conformant |= EGL_OPENGL_ES2_BIT;
+   }
+
    GLX_conf->Base.SurfaceType = EGL_WINDOW_BIT;
    /* pixmap surfaces must be single-buffered in EGL */
    if (!GLX_conf->double_buffered)
@@ -566,6 +585,14 @@ check_extensions(struct GLX_egl_driver *GLX_drv,
       if (strstr(GLX_dpy->extensions, "GLX_ARB_create_context")) {
          GLX_dpy->have_create_context_attribs = EGL_TRUE;
       }
+
+      if (strstr(GLX_dpy->extensions, "GLX_EXT_create_context_es_profile")) {
+         GLX_dpy->have_create_context_es_profile = EGL_TRUE;
+      }
+
+      if (strstr(GLX_dpy->extensions, "GLX_EXT_create_context_es2_profile")) {
+         GLX_dpy->have_create_context_es2_profile = EGL_TRUE;
+      }
    }
 
    if (GLX_dpy->glx_maj == 1 && GLX_dpy->glx_min >= 3) {
@@ -664,6 +691,12 @@ GLX_eglInitialize(_EGLDriver *drv, _EGLDisplay *disp)
 
    disp->Extensions.KHR_create_context = GLX_dpy->have_create_context_attribs;
 
+   /* We support OpenGL ES context creation */
+   if (GLX_dpy->have_create_context_es_profile)
+      disp->ClientAPIs |= EGL_OPENGL_ES_BIT;
+   if (GLX_dpy->have_create_context_es2_profile)
+      disp->ClientAPIs |= EGL_OPENGL_ES2_BIT;
+
    return EGL_TRUE;
 }
 
@@ -716,11 +749,15 @@ GLX_eglCreateContext(_EGLDriver *drv, _EGLDisplay *disp, _EGLConfig *conf,
    }
 
    if (GLX_dpy->have_create_context_attribs) {
+      int profile = GLX_ctx->Base.Profile;
+      if (GLX_ctx->Base.ClientAPI == EGL_OPENGL_ES_API)
+        profile = GLX_CONTEXT_ES_PROFILE_BIT_EXT;
+
       int context_attribs[] = {
           GLX_CONTEXT_MAJOR_VERSION_ARB, GLX_ctx->Base.ClientMajorVersion,
           GLX_CONTEXT_MINOR_VERSION_ARB, GLX_ctx->Base.ClientMinorVersion,
           GLX_CONTEXT_FLAGS_ARB, GLX_ctx->Base.Flags & 0x3,
-          GLX_CONTEXT_PROFILE_MASK_ARB, GLX_ctx->Base.Profile,
+          GLX_CONTEXT_PROFILE_MASK_ARB, profile,
           None
       };
 
