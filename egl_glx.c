@@ -112,6 +112,7 @@ struct GLX_egl_driver
 
    /* GLX 1.4 or GLX_ARB_get_proc_address */
    PFNGLXGETPROCADDRESSPROC glXGetProcAddress;
+   PFNGLXCREATECONTEXTATTRIBSARBPROC glXCreateContextAttribsARB;
 
    /* GLX_SGIX_pbuffer */
    PFNGLXCREATEGLXPBUFFERSGIXPROC glXCreateGLXPbufferSGIX;
@@ -133,6 +134,7 @@ struct GLX_egl_display
    EGLBoolean have_make_current_read;
    EGLBoolean have_fbconfig;
    EGLBoolean have_pbuffer;
+   EGLBoolean have_create_context_attribs;
 
    /* workaround quirks of different GLX implementations */
    EGLBoolean single_buffered_quirk;
@@ -547,6 +549,10 @@ check_extensions(struct GLX_egl_driver *GLX_drv,
              GLX_dpy->have_fbconfig)
             GLX_dpy->have_pbuffer = EGL_TRUE;
       }
+
+      if (strstr(GLX_dpy->extensions, "GLX_ARB_create_context")) {
+         GLX_dpy->have_create_context_attribs = EGL_TRUE;
+      }
    }
 
    if (GLX_dpy->glx_maj == 1 && GLX_dpy->glx_min >= 3) {
@@ -636,9 +642,14 @@ GLX_eglInitialize(_EGLDriver *drv, _EGLDisplay *disp)
       return EGL_FALSE;
    }
 
-   /* we're supporting EGL 1.4 */
+   /* we're supporting EGL 1.5 if we have GLX_ARB_create_context, else 1.4 */
    disp->VersionMajor = 1;
-   disp->VersionMinor = 4;
+   if (GLX_dpy->have_create_context_attribs)
+      disp->VersionMinor = 5;
+   else
+      disp->VersionMinor = 4;
+
+   disp->Extensions.KHR_create_context = GLX_dpy->have_create_context_attribs;
 
    return EGL_TRUE;
 }
@@ -690,7 +701,22 @@ GLX_eglCreateContext(_EGLDriver *drv, _EGLDisplay *disp, _EGLConfig *conf,
       return NULL;
    }
 
-   if (GLX_dpy->have_fbconfig) {
+   if (GLX_dpy->have_create_context_attribs) {
+      int context_attribs[] = {
+          GLX_CONTEXT_MAJOR_VERSION_ARB, GLX_ctx->Base.ClientMajorVersion,
+          GLX_CONTEXT_MINOR_VERSION_ARB, GLX_ctx->Base.ClientMinorVersion,
+          GLX_CONTEXT_FLAGS_ARB, GLX_ctx->Base.Flags & 0x3,
+          GLX_CONTEXT_PROFILE_MASK_ARB, GLX_ctx->Base.Profile,
+          None
+      };
+
+      GLX_ctx->context = GLX_drv->glXCreateContextAttribsARB(GLX_dpy->dpy,
+            GLX_dpy->fbconfigs[GLX_egl_config_index(conf)],
+            GLX_ctx_shared ? GLX_ctx_shared->context : NULL,
+            GL_TRUE,
+            context_attribs);
+   }
+   else if (GLX_dpy->have_fbconfig) {
       GLX_ctx->context = GLX_drv->glXCreateNewContext(GLX_dpy->dpy,
             GLX_dpy->fbconfigs[GLX_egl_config_index(conf)],
             GLX_RGBA_TYPE,
@@ -1121,6 +1147,9 @@ GLX_Load(_EGLDriver *drv)
    GET_PROC(PFNGLXDESTROYPBUFFERPROC, glXDestroyPbuffer, EGL_FALSE);
    GET_PROC(PFNGLXCREATENEWCONTEXTPROC, glXCreateNewContext, EGL_FALSE);
    GET_PROC(PFNGLXMAKECONTEXTCURRENTPROC, glXMakeContextCurrent, EGL_FALSE);
+
+   /* GLX 1.4 */
+   GET_PROC(PFNGLXCREATECONTEXTATTRIBSARBPROC, glXCreateContextAttribsARB, EGL_FALSE);
 
    /* GLX_SGIX_pbuffer */
    GET_PROC(PFNGLXCREATEGLXPBUFFERSGIXPROC,
