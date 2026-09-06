@@ -48,6 +48,7 @@
 #include "egldriver.h"
 #include "eglcurrent.h"
 #include "egllog.h"
+#include "eglstring.h"
 #include "eglsurface.h"
 
 #define CALLOC_STRUCT(T)   (struct T *) calloc(1, sizeof(struct T))
@@ -141,6 +142,9 @@ struct GLX_egl_display
    /* workaround quirks of different GLX implementations */
    EGLBoolean single_buffered_quirk;
    EGLBoolean glx_window_quirk;
+
+   char vendor_string[64];
+   char version_string[16];
 };
 
 
@@ -696,6 +700,13 @@ GLX_eglInitialize(_EGLDriver *drv, _EGLDisplay *disp)
       disp->ClientAPIs |= EGL_OPENGL_ES_BIT;
    if (GLX_dpy->have_create_context_es2_profile)
       disp->ClientAPIs |= EGL_OPENGL_ES2_BIT;
+
+   _eglsnprintf(GLX_dpy->vendor_string, sizeof(GLX_dpy->vendor_string),
+                "egl_glx (%s)", glXGetClientString(GLX_dpy->dpy, GLX_VENDOR));
+   GLX_drv->Base.Vendor = GLX_dpy->vendor_string;
+   _eglsnprintf(GLX_dpy->version_string, sizeof(GLX_dpy->version_string),
+                "GLX %s", glXGetClientString(GLX_dpy->dpy, GLX_VERSION));
+   GLX_drv->Base.Name = GLX_dpy->version_string;
 
    return EGL_TRUE;
 }
@@ -1268,6 +1279,7 @@ _eglBuiltInDriverGLX(const char *args)
    GLX_drv->Base.API.WaitClient = GLX_eglWaitClient;
    GLX_drv->Base.API.WaitNative = GLX_eglWaitNative;
 
+   GLX_drv->Base.Vendor = _EGL_VENDOR_STRING;
    GLX_drv->Base.Name = "GLX";
    GLX_drv->Base.Unload = GLX_Unload;
 

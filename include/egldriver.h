@@ -71,6 +71,7 @@ typedef _EGLDriver *(*_EGLMain_t)(const char *args);
  */
 struct _egl_driver
 {
+   const char *Vendor;
    const char *Name;  /**< name of this driver */
 
    /**
